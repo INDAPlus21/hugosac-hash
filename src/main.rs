@@ -1,5 +1,6 @@
 use std::collections::LinkedList;
 use std::error::Error;
+use std::io;
 
 use csv;
 use serde::Deserialize;
@@ -12,7 +13,7 @@ struct Data {
 }
 
 struct HashTable {
-    pub table: Vec<Option<LinkedList<Data>>>,
+    pub table: Vec<Option<Vec<Data>>>,
     pub num_of_lists: usize,
     pub num_of_elements: usize,
     pub capacity: usize
@@ -20,7 +21,7 @@ struct HashTable {
 
 impl HashTable {
     pub fn new(capacity: usize) -> HashTable {
-        let mut hash_table: Vec<Option<LinkedList<Data>>> = Vec::with_capacity(capacity);
+        let mut hash_table: Vec<Option<Vec<Data>>> = Vec::with_capacity(capacity);
         for _ in 0..capacity {
             hash_table.push(None);
         }
@@ -38,11 +39,11 @@ impl HashTable {
 
         match &mut self.table[index] {
             Some(list) => {
-                list.push_front(element);
+                list.push(element);
                 self.num_of_elements += 1;
             }
             None => { 
-                self.table[index] = Some(LinkedList::from([element]));
+                self.table[index] = Some(Vec::from([element]));
                 self.num_of_lists += 1;
                 self.num_of_elements += 1;
             }
@@ -82,7 +83,7 @@ impl HashTable {
 
         match &mut self.table[index] {
             Some(list) => {
-                list.push_front(
+                list.push(
                     Data { 
                         key: key.to_string(), 
                         value: value.to_string() 
@@ -91,7 +92,7 @@ impl HashTable {
                 self.num_of_elements += 1;
             }
             None => { 
-                self.table[index] = Some(LinkedList::from(
+                self.table[index] = Some(Vec::from(
                     [
                         Data {
                             key: key.to_string(),
@@ -127,6 +128,25 @@ impl HashTable {
         }
     }
 
+    pub fn delete(&mut self, key: &String) {
+        for _i in 0..self.capacity {
+            match &mut self.table[_i] {
+                Some(list) => {
+                    let mut _j = 0;
+                    for element in list.iter() {
+                        if &element.key == key {
+                            list.remove(_j);
+                            println!("Successfully deleted {}", key);
+                            return;
+                        } 
+                        _j += 1;
+                    }
+                }
+                None => { println!("Element not found"); }
+            }
+        }
+    }
+
     pub fn contains(&mut self, key: &String) -> bool {
         let index = hashcode(key) % self.capacity;
         match &mut self.table[index] {
@@ -157,6 +177,19 @@ impl HashTable {
             }
             None => {
                 return -2;
+            }
+        }
+    }
+
+    pub fn print_all(&mut self) {
+        for _i in 0..self.capacity {
+            match &mut self.table[_i] {
+                Some(list) => {
+                    for element in list.iter() {
+                        println!("{:?}", element)
+                    }
+                }
+                None => {}
             }
         }
     }
@@ -208,24 +241,42 @@ fn write_csv(hash_table: &mut HashTable, path: &str) -> Result<(), Box<dyn Error
 }
 
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() {
     let path = "data.csv";
     let _capacity = 10;
     let mut hash_table = HashTable::new(_capacity);
 
+    let input = io::stdin();
+
     read_csv(&mut hash_table, path).expect("Failed to read file");
 
-    hash_table.insert(&String::from("Germany"), &String::from("Berlin"));
+    loop {
+        let mut buffer = String::new();
+        input.read_line(&mut buffer).expect("Couldn't read line");
 
-    
-    write_csv(&mut hash_table, path).expect("Failed to write to file");
+        let args: Vec<&str> = buffer
+            .split_whitespace()
+            .filter(|s| !s.is_empty())
+            .collect();
 
-    let data = hash_table.get(&String::from("Sweden"));
+        // if args.len() < 3 { break; }
 
-    match data {
-        Some(element) => { println!("{}", element.value) }
-        None => {}
+        match args[0] {
+            "INSERT" => { hash_table.insert(&args[1].to_string(), &args[2].to_string()) }
+            "DELETE" => { hash_table.delete(&args[1].to_string()) }
+            "ALL"    => { hash_table.print_all() }
+            "GET"    => {
+                let data = hash_table.get(&args[1].to_string());
+                match data {
+                    Some(element) => { println!("{}", element.value); }
+                    None => { println!("Element not found"); }
+                }
+            }
+            "QUIT"   => { break; }
+            _        => {}
+        }
+
+        write_csv(&mut hash_table, path).expect("Failed to write to file");
     }
 
-    Ok(())
 }
