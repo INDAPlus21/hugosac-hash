@@ -1,5 +1,11 @@
 use std::collections::LinkedList;
+use std::error::Error;
 
+use csv;
+use serde::Deserialize;
+use serde::Serialize;
+
+#[derive(Debug, Serialize, Deserialize)]
 struct Data {
     pub key: String,
     pub value: String
@@ -99,19 +105,24 @@ impl HashTable {
         }
     }
 
-    pub fn get(&mut self, key: &String) -> String {
+    pub fn get(&mut self, key: &String) -> Option<Data> {
         let index = hashcode(key) % self.capacity;
-        match &mut self.table[index] {
+        match &self.table[index] {
             Some(list) => {
                 for element in list.iter() {
                     if &element.key == key {
-                        return element.value.to_string();
+                        return Some(
+                            Data {
+                                key: element.key.to_string(),
+                                value: element.value.to_string()
+                            }
+                        );
                     }
                 }
-                return String::from("Key is not present in the database");
+                return None;
             }
             None => {
-                return String::from("Key is not present in the database");
+                return None;
             }
         }
     }
@@ -125,7 +136,6 @@ impl HashTable {
                         return true;
                     }
                 }
-
                 return false;
             }
             None => {
@@ -143,15 +153,10 @@ impl HashTable {
                         return index as i32;
                     }
                 }
-
                 return -1;
             }
             None => {
                 return -2;
-            }
-
-            _ => {
-                return -3;
             }
         }
     }
@@ -172,26 +177,55 @@ fn hashcode(key: &String) -> usize {
 
 }
 
+fn read_csv(hash_table: &mut HashTable, path: &str) -> Result<(), Box<dyn Error>> {
+    let mut reader = csv::Reader::from_path(path)?; 
 
-fn main() {
+    for result in reader.deserialize() {
+        let record: Data = result?;
+        hash_table.insert(&record.key, &record.value);
+    }
 
-    let capacity = 3;
-    let mut hash_table = HashTable::new(capacity);
-    hash_table.insert(&String::from("Hugo"), &String::from("Sacilotto"));
-    hash_table.insert(&String::from("Hugo"), &String::from("Sacilotto"));
-    println!("{}", hash_table.get_index(&String::from("Hugo")));
-    hash_table.insert(&String::from("Hug"), &String::from("Saci"));
-    hash_table.insert(&String::from("go"), &String::from("Saci"));
-    hash_table.insert(&String::from("ugo"), &String::from("Saci"));
-    hash_table.insert(&String::from("Hu"), &String::from("Saci"));
-    hash_table.insert(&String::from("Huuugo"), &String::from("Saci"));
-    hash_table.insert(&String::from("Huggo"), &String::from("Saci"));
-    hash_table.insert(&String::from("Huggggo"), &String::from("Saci"));
-    println!("{}", hash_table.get_index(&String::from("Hugo")));
+    Ok(())
+}
+
+fn write_csv(hash_table: &mut HashTable, path: &str) -> Result<(), Box<dyn Error>> {
+    let mut writer = csv::Writer::from_path(path)?;
+
+    for _i in 0..hash_table.capacity {
+        match &mut hash_table.table[_i] {
+            Some(list) => {
+                for element in list.iter() {
+                    writer.serialize(element)?;
+                }
+            }
+            None => {}
+        }
+    }
+
+    writer.flush()?;
+
+    Ok(())
+}
+
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let path = "data.csv";
+    let _capacity = 10;
+    let mut hash_table = HashTable::new(_capacity);
+
+    read_csv(&mut hash_table, path).expect("Failed to read file");
+
+    hash_table.insert(&String::from("Germany"), &String::from("Berlin"));
+
     
-    
-    // let value = hash_table.get(&String::from("Hugo"));
-    // println!("{}", value);
-    // println!("{}", hash_table.num_of_elements);
-    // println!("{}", hash_table.num_of_lists);
+    write_csv(&mut hash_table, path).expect("Failed to write to file");
+
+    let data = hash_table.get(&String::from("Sweden"));
+
+    match data {
+        Some(element) => { println!("{}", element.value) }
+        None => {}
+    }
+
+    Ok(())
 }
