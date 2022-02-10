@@ -1,4 +1,3 @@
-use std::collections::LinkedList;
 use std::error::Error;
 use std::io;
 
@@ -8,8 +7,8 @@ use serde::Serialize;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Data {
-    pub key: String,
-    pub value: String
+    pub country: String,
+    pub capital: String
 }
 
 struct HashTable {
@@ -35,7 +34,29 @@ impl HashTable {
     }
 
     pub fn add(&mut self, element: Data) {
-        let index: usize = hashcode(&element.key) % self.capacity;
+        let index: usize = hashcode(&element.country) % self.capacity;
+
+        if self.num_of_lists == self.capacity - 1 {
+            println!("Expansion is needed");
+            // Expand table
+            self.capacity *= 2;
+            let mut new_table = HashTable::new(self.capacity);
+
+            // Copy all elements 
+            for _list in &self.table {
+                match _list {
+                    Some(list) => {
+                        for entry in list.iter() {
+                            new_table.insert(&entry.country, &entry.capital);
+                        }
+                    }
+                    None => {}
+                }
+            }
+
+            *self = new_table;
+            println!("Table has been rebuilt!");
+        }
 
         match &mut self.table[index] {
             Some(list) => {
@@ -50,10 +71,10 @@ impl HashTable {
         }
     }
 
-    pub fn insert(&mut self, key: &String, value: &String) {
-        // Check if key is already used
-        if self.contains(key) {
-            println!("{} is already in the data base", key);
+    pub fn insert(&mut self, country: &String, capital: &String) {
+        // Check if country is already used
+        if self.contains(country) {
+            println!("{} is already in the data base\n", country);
             return;
         }
         
@@ -68,7 +89,7 @@ impl HashTable {
                 match _list {
                     Some(list) => {
                         for element in list.iter() {
-                            new_table.insert(&element.key, &element.value);
+                            new_table.insert(&element.country, &element.capital);
                         }
                     }
                     None => {}
@@ -79,14 +100,14 @@ impl HashTable {
             println!("Table has been rebuilt!");
         }
 
-        let index: usize = hashcode(key) % self.capacity; 
+        let index: usize = hashcode(country) % self.capacity; 
 
         match &mut self.table[index] {
             Some(list) => {
                 list.push(
                     Data { 
-                        key: key.to_string(), 
-                        value: value.to_string() 
+                        country: country.to_string(), 
+                        capital: capital.to_string() 
                     }
                 );
                 self.num_of_elements += 1;
@@ -95,8 +116,8 @@ impl HashTable {
                 self.table[index] = Some(Vec::from(
                     [
                         Data {
-                            key: key.to_string(),
-                            value: value.to_string()
+                            country: country.to_string(),
+                            capital: capital.to_string()
                         }
                     ]
                 ));
@@ -104,18 +125,19 @@ impl HashTable {
                 self.num_of_elements += 1;
             }
         }
+        println!("Successfully inserted {}\n", country);
     }
 
-    pub fn get(&mut self, key: &String) -> Option<Data> {
-        let index = hashcode(key) % self.capacity;
+    pub fn get(&mut self, country: &String) -> Option<Data> {
+        let index = hashcode(country) % self.capacity;
         match &self.table[index] {
             Some(list) => {
                 for element in list.iter() {
-                    if &element.key == key {
+                    if &element.country == country {
                         return Some(
                             Data {
-                                key: element.key.to_string(),
-                                value: element.value.to_string()
+                                country: element.country.to_string(),
+                                capital: element.capital.to_string()
                             }
                         );
                     }
@@ -128,31 +150,30 @@ impl HashTable {
         }
     }
 
-    pub fn delete(&mut self, key: &String) {
+    pub fn delete(&mut self, country: &String) {
         for _i in 0..self.capacity {
             match &mut self.table[_i] {
                 Some(list) => {
-                    let mut _j = 0;
-                    for element in list.iter() {
-                        if &element.key == key {
-                            list.remove(_j);
-                            println!("Successfully deleted {}", key);
+                    for _j in 0..list.len() {
+                        if &list[_j].country == country {
+                            let _ = list.remove(_j);
+                            println!("Successfully deleted {}\n", country);
                             return;
                         } 
-                        _j += 1;
                     }
                 }
-                None => { println!("Element not found"); }
+                None => { }
             }
         }
+        println!("Element not found\n");
     }
 
-    pub fn contains(&mut self, key: &String) -> bool {
-        let index = hashcode(key) % self.capacity;
+    pub fn contains(&mut self, country: &String) -> bool {
+        let index = hashcode(country) % self.capacity;
         match &mut self.table[index] {
             Some(list) => {
                 for element in list.iter() {
-                    if &element.key == key {
+                    if &element.country == country {
                         return true;
                     }
                 }
@@ -164,44 +185,32 @@ impl HashTable {
         }
     }
 
-    pub fn get_index(&mut self, key: &String) -> i32 {
-        let index = hashcode(key) % self.capacity;
-        match &mut self.table[index] {
-            Some(list) => {
-                for element in list.iter() {
-                    if &element.key == key {
-                        return index as i32;
-                    }
-                }
-                return -1;
-            }
-            None => {
-                return -2;
-            }
-        }
-    }
-
     pub fn print_all(&mut self) {
+        if self.capacity == 0 {
+            println!("Table is empty\n");
+            return;
+        }
         for _i in 0..self.capacity {
             match &mut self.table[_i] {
                 Some(list) => {
                     for element in list.iter() {
-                        println!("{:?}", element)
+                        println!("{:?}", element);
                     }
                 }
                 None => {}
             }
         }
+        println!("");
     }
 }
 
 
-fn hashcode(key: &String) -> usize {
+fn hashcode(country: &String) -> usize {
     let mut constant: u32 = 1;
 
     let mut code: u32 = 0;
 
-    for c in key.chars() {
+    for c in country.chars() {
         code += c as u32 * constant;
         constant *= 10;
     }
@@ -215,7 +224,7 @@ fn read_csv(hash_table: &mut HashTable, path: &str) -> Result<(), Box<dyn Error>
 
     for result in reader.deserialize() {
         let record: Data = result?;
-        hash_table.insert(&record.key, &record.value);
+        hash_table.add(record);
     }
 
     Ok(())
@@ -243,8 +252,7 @@ fn write_csv(hash_table: &mut HashTable, path: &str) -> Result<(), Box<dyn Error
 
 fn main() {
     let path = "data.csv";
-    let _capacity = 10;
-    let mut hash_table = HashTable::new(_capacity);
+    let mut hash_table = HashTable::new(10);
 
     let input = io::stdin();
 
@@ -259,21 +267,39 @@ fn main() {
             .filter(|s| !s.is_empty())
             .collect();
 
-        // if args.len() < 3 { break; }
+        
+        if args.len() < 1 { break; }
 
         match args[0] {
-            "INSERT" => { hash_table.insert(&args[1].to_string(), &args[2].to_string()) }
-            "DELETE" => { hash_table.delete(&args[1].to_string()) }
-            "ALL"    => { hash_table.print_all() }
+            "INSERT" => { 
+                if args.len() < 3 {
+                    println!("You need to specify country and capital\n");
+                    continue;
+                }
+                hash_table.insert(&args[1].to_string(), &args[2].to_string()); 
+            }
+            "DELETE" => { 
+                if args.len() < 2 {
+                    println!("You need to specify a country to delete\n");
+                    continue;
+                }
+                hash_table.delete(&args[1].to_string()); 
+            }
+            "ALL"    => { hash_table.print_all(); }
             "GET"    => {
+                if args.len() < 2 {
+                    println!("You need to specify a country to delete\n");
+                    continue;
+                }
                 let data = hash_table.get(&args[1].to_string());
                 match data {
-                    Some(element) => { println!("{}", element.value); }
-                    None => { println!("Element not found"); }
+                    Some(element) => { println!("{}\n", element.capital); }
+                    None => { println!("Element not found\n"); }
                 }
+                continue;   // No need to rewrite to the csv file
             }
             "QUIT"   => { break; }
-            _        => {}
+            _        => { println!("Invalid command\n"); }
         }
 
         write_csv(&mut hash_table, path).expect("Failed to write to file");
