@@ -45,8 +45,8 @@ impl HashTable {
 
     pub fn insert(&mut self, key: &String, value: &String) {
         // Check if key is already used
-        if self.get(key) != String::from("Key is not present in the database") {
-            println!("Key is already used");
+        if self.contains(key) {
+            println!("{} is already in the data base", key);
             return;
         }
         
@@ -116,7 +116,25 @@ impl HashTable {
         }
     }
 
-    pub fn index(&mut self, key: &String) -> i32 {
+    pub fn contains(&mut self, key: &String) -> bool {
+        let index = hashcode(key) % self.capacity;
+        match &mut self.table[index] {
+            Some(list) => {
+                for element in list.iter() {
+                    if &element.key == key {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            None => {
+                return false;
+            }
+        }
+    }
+
+    pub fn get_index(&mut self, key: &String) -> i32 {
         let index = hashcode(key) % self.capacity;
         match &mut self.table[index] {
             Some(list) => {
@@ -160,7 +178,8 @@ fn main() {
     let capacity = 3;
     let mut hash_table = HashTable::new(capacity);
     hash_table.insert(&String::from("Hugo"), &String::from("Sacilotto"));
-    println!("{}", hash_table.index(&String::from("Hugo")));
+    hash_table.insert(&String::from("Hugo"), &String::from("Sacilotto"));
+    println!("{}", hash_table.get_index(&String::from("Hugo")));
     hash_table.insert(&String::from("Hug"), &String::from("Saci"));
     hash_table.insert(&String::from("go"), &String::from("Saci"));
     hash_table.insert(&String::from("ugo"), &String::from("Saci"));
@@ -168,7 +187,7 @@ fn main() {
     hash_table.insert(&String::from("Huuugo"), &String::from("Saci"));
     hash_table.insert(&String::from("Huggo"), &String::from("Saci"));
     hash_table.insert(&String::from("Huggggo"), &String::from("Saci"));
-    println!("{}", hash_table.index(&String::from("Hugo")));
+    println!("{}", hash_table.get_index(&String::from("Hugo")));
     
     
     // let value = hash_table.get(&String::from("Hugo"));
