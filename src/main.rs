@@ -95,7 +95,6 @@ impl HashTable {
                     None => {}
                 }
             }
-
             *self = new_table;
             println!("Table has been rebuilt!");
         }
@@ -216,7 +215,6 @@ fn hashcode(country: &String) -> usize {
     }
 
     return code as usize;
-
 }
 
 fn read_csv(hash_table: &mut HashTable, path: &str) -> Result<(), Box<dyn Error>> {
@@ -245,10 +243,8 @@ fn write_csv(hash_table: &mut HashTable, path: &str) -> Result<(), Box<dyn Error
     }
 
     writer.flush()?;
-
     Ok(())
 }
-
 
 fn main() {
     let path = "data.csv";
@@ -304,5 +300,4 @@ fn main() {
 
         write_csv(&mut hash_table, path).expect("Failed to write to file");
     }
-
 }
